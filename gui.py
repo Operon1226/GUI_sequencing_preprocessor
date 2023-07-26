@@ -297,6 +297,7 @@ class OperationMenu(tk.Menu):
         
         rcommand = self.run_command(command)
         if rcommand != None:
+            self.text_module.update_info_to_display("Error occured, executed command is below\n" + command)
             self.text_module.update_info_to_display("Error occured, please check the error message below")
             self.text_module.update_info_to_display(rcommand)
             stderrfile = open(outdir_adp+"Error_message.txt","w+")
@@ -533,6 +534,7 @@ class OperationMenu(tk.Menu):
         
         rcommand = self.run_command(command)
         if rcommand != None:
+            self.text_module.update_info_to_display("Error occured, executed command is below\n" + command)
             stderrfile = open(outdir_map+"Error_message.txt","w+")
             stderrfile.write(rcommand)
             stderrfile.close()
@@ -541,7 +543,7 @@ class OperationMenu(tk.Menu):
             return 1
         
         self.text_module.update_info_to_display(
-            "Executed command are "+ command + "\nRemoving unwanted reads are done\nOutputs are saved in " + self.file_name[0][0] + ".processed_files/mapping directory\n"
+            "Executed command are "+ command + "\nConverting were done!\nOutputs are saved in " + self.file_name[0][0] + ".processed_files/mapping directory\n"
         )
         
     def remove_pcr_duplicates(self):
@@ -569,7 +571,7 @@ class OperationMenu(tk.Menu):
             if (test[i][len(test[i])-2] == "mapping") and (test[i][len(test[i])-3] == (self.file_name[0][0] + ".processed_files")):
                 del test[i][len(test[i])-1]
                 del test2[i][len(test2[i])-1]
-                test[i][len(test[i])-1] = 'map/'
+                test[i][len(test[i])-1] = 'mapping/'
                 test2[i][len(test2[i])-1] = 'QC/'
                 test[i] = "/".join(test[i])
                 test2[i] = "/".join(test2[i])
@@ -582,7 +584,7 @@ class OperationMenu(tk.Menu):
             if dcommand_a != None:
                 if dircheck_a != "ok":
                     return 1
-            outdir_map = outdir + "map/"
+            outdir_map = outdir + "mapping/"
             (dcommand_b,dircheck_b) = self.directory_making(outdir_map)
             if dcommand_b != None:
                 if dircheck_b != "ok":
@@ -614,7 +616,7 @@ class OperationMenu(tk.Menu):
         # Making duplicates
         command = (
             "java -Xmx4G -jar /seq/picard-tools-1.79/MarkDuplicates.jar" + self.space + 
-            "INPUT=" + self.filepaths[0] + self.space +
+            "INPUT=" + self.file_paths[0] + self.space +
             "OUTPUT=" + out_rmdup + self.space +
             "METRICS_FILE=" + outdir_qc + self.file_name[0][0] + ".Picard_Metrics_unfiltered_bam.txt" + self.space +
             "VALIDATION_STRINGENCY=LENIENT" + self.space + "ASSUME_SORTED=true" + self.space +
@@ -625,29 +627,33 @@ class OperationMenu(tk.Menu):
         
         rcommand = self.run_command(command)
         if rcommand != None:
+            self.text_module.update_info_to_display("Error occured, executed command is below\n" + command)
             self.init()
             return 1
         
         self.text_module.update_info_to_display(
-            "Marking duplicates is done\nOutputs are saved in " + self.file_name[0][0] + ".processed_files/remove_pcr_duplicates directory\n" +
+            "Executed command are "+ command +"Marking duplicates is done\nOutputs are saved in " + self.file_name[0][0] + ".processed_files/remove_pcr_duplicates directory\n" +
             "and" + self.file_name[0][0] + ".processed_files/QC directory\n"
         )
         
         command = ("samtools index " + out_rmdup)
         rcommand = self.run_command(command)
         if rcommand != None:
+            self.text_module.update_info_to_display("Error occured, executed command is below\n" + command)
             self.init()
             self.text_module.update_info_to_display("Error occured during indexing")
             return 1
-        command = ("samtools idxstats " + out_rmdup + self.space + ">" + outdir_qc + self.file_name[0][0] + "samtools.idxstats.txt")
+        command = ("samtools idxstats " + out_rmdup + self.space + ">" + outdir_qc + self.file_name[0][0] + ".samtools.idxstats.txt")
         rcommand = self.run_command(command)
         if rcommand != None:
+            self.text_module.update_info_to_display("Error occured, executed command is below\n" + command)
             self.init()
             self.text_module.update_info_to_display("Error occured during making idxstats.txt")
             return 1
-        command = ("samtools flagstat " + out_rmdup + self.space + ">" + outdir_qc + self.file_name[0][0] + "samtools.flagstat.txt")
+        command = ("samtools flagstat " + out_rmdup + self.space + ">" + outdir_qc + self.file_name[0][0] + ".samtools.flagstat.txt")
         rcommand = self.run_command(command)
         if rcommand != None:
+            self.text_module.update_info_to_display("Error occured, executed command is below\n" + command)
             self.init()
             self.text_module.update_info_to_display("Error occured during making flagstat.txt")
             return 1
@@ -664,7 +670,7 @@ class OperationMenu(tk.Menu):
             self.text_module.clear_info_to_display()
             self.text_module.update_info_to_display("Too many files selected")
             return 1
-        if not((self.file_extension[0]) == "sam"):
+        if not((self.file_extension[0]) == "bam"):
             self.init()
             self.text_module.clear_info_to_display()
             self.text_module.update_info_to_display("Selected files are wrong format")
@@ -675,7 +681,9 @@ class OperationMenu(tk.Menu):
         for i in range(len(self.file_paths)):
             test.append(self.file_paths[i].split("/"))
             if (test[i][len(test[i])-2] == "mapping") and (test[i][len(test[i])-3] == (self.file_name[0][0] + ".processed_files")):
-                continue
+                del test[i][len(test[i])-1]
+                test[i][len(test[i])-1] = 'mapping/'
+                test[i] = "/".join(test[i])
             else:
                 dir += 1
         if dir != 0:
@@ -691,34 +699,42 @@ class OperationMenu(tk.Menu):
                 if dircheck_b != "ok":
                     return 1
         else:
-            outdir_map = self.directory_processing(self.file_directory)
+            outdir_map = self.directory_processing(test)
             
         out_univ = outdir_map + self.file_name[0][0] + ".pe.q10.sort.rmdup."
     
         # Bam to Bed
         command = ("/seq/ATAC-seq/Code/bam2bed_shift.pl " + out_univ + "bam")
         rcommand = self.run_command(command)
-        if rcommand != None:
-            self.init()
-            return 1
+        self.text_module.update_info_to_display("Bam to bed is done\nOutput file is saved in " + self.file_name[0][0] + ".processed_files/mapping directory\n")
         # Bed to bedGraph
-        command = ("genomeCoverageBed -bg -split -i " + out_univ + "bed" + self.space + "-g /seq/ATAC-seq/Code/hg38.chrom.sizes" + self.space + 
+        command = ("genomeCoverageBed -bg -split -i " + out_univ + "bed" + self.space + "-g /seq/ATAC-seq/Data/hg38.chrom.sizes" + self.space + 
                    ">" + outdir_map + self.file_name[0][0] + ".bedGraph")
         rcommand = self.run_command(command)
+        self.text_module.update_info_to_display("Bed to bedGraph is done\nOutput file is saved in " + self.file_name[0][0] + ".processed_files/mapping directory\n")
         if rcommand != None:
+            self.text_module.update_info_to_display("Error occured, executed command is below\n" + command)
+            self.text_module.update_info_to_display("Error occured during bed to bedGraph")
+            self.text_module.update_info_to_display(rcommand)
             self.init()
             return 1
         # Normalizing bedGraph
         command = ("perl /seq/ATAC-seq/Code/norm_bedGraph.pl "+ outdir_map + self.file_name[0][0] + ".bedGraph" + self.space + 
                    outdir_map + self.file_name[0][0] + ".norm1.bedGraph >" + outdir_map + self.file_name[0][0] + ".norm.bedGraph.log")
         rcommand = self.run_command(command)
+        self.text_module.update_info_to_display("Normalizing Bedgraph is done\nOutput file is saved in " + self.file_name[0][0] + ".processed_files/mapping directory\n")
         if rcommand != None:
+            self.text_module.update_info_to_display("Error occured, executed command is below\n" + command)
+            self.text_module.update_info_to_display("Error occured during normalizing bedGraph")
             self.init()
             return 1
         # Sorting bedGraph
-        command = ("LC_COLLATE=C sort -k1,1 -k2,2n " + outdir_map + self.name[0][0] + ".norm1.bedGraph >" + outdir_map + self.name[0][0] + ".norm.bedGraph")
+        command = ("LC_COLLATE=C sort -k1,1 -k2,2n " + outdir_map + self.name[0][0] + ".norm1.bedGraph >" + outdir_map + self.file_name[0][0] + ".norm.bedGraph")
         rcommand = self.run_command(command)
+        self.text_module.update_info_to_display("Sorting Bedgraph is done\nOutput file is saved in " + self.file_name[0][0] + ".processed_files/mapping directory\n")
         if rcommand != None:
+            self.text_module.update_info_to_display("Error occured, executed command is below\n" + command)
+            self.text_module.update_info_to_display("Error occured during sorting bedGraph")
             self.init()
             return 1
         # BedGraph to BigWig
@@ -728,7 +744,10 @@ class OperationMenu(tk.Menu):
             outdir_map + self.file_name[0][0] + ".norm.bw"
         )
         rcommand = self.run_command(command)
+        self.text_module.update_info_to_display("bedGraph to bigwig is done\nOutput file is saved in " + self.file_name[0][0] + ".processed_files/mapping directory\n")
         if rcommand != None:
+            self.text_module.update_info_to_display("Error occured, executed command is below\n" + command)
+            self.text_module.update_info_to_display("Error occured during bedGraph to BigWig")
             self.init()
             return 1
         
