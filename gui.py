@@ -112,7 +112,7 @@ class OperationMenu(tk.Menu):
         self.add_command(label = "Adapter trimming", command = self.adapter_trimming)
         self.add_command(label = "Mapping", command = self.mapping)
         self.add_command(label = "Remove unwanted reads", command = self.remove_unwanted_reads)
-        self.add_command(label = "Convert sam to bam", command = self.conver_sam_to_bam)
+        self.add_command(label = "Convert sam to bam", command = self.convert_sam_to_bam)
         self.add_command(label = "Remove PCR duplicates", command = self.remove_pcr_duplicates)
         self.add_command(label = "Convert to bedgraph and bigwig", command = self.convert_to_bedgraph_and_bigwig)
         
@@ -184,7 +184,7 @@ class OperationMenu(tk.Menu):
             self.file_directory[i] = self.file_directory[i][0:len(self.file_directory[i])-1]
             self.file_directory[i] = '/'.join(self.file_directory[i])
              
-    def directory_processing(self,directory):     
+    def directory_processing(self,directory):
         self.directory = directory
         
         # Directory checking
@@ -219,8 +219,6 @@ class OperationMenu(tk.Menu):
             self.processes.remove(output)
             
             if stderr != "":
-                self.text_module.update_info_to_display("Error occured, please check the error message below")
-                self.text_module.update_info_to_display(stderr)
                 return stderr
             
             
@@ -275,9 +273,22 @@ class OperationMenu(tk.Menu):
             self.init()
             return 1
         
+        # 3' R1 adapter sequence
+        self.popup_window.popup_input("Adapter sequence R1","3\' adapter to be removed from R1\nIf you want to use \"CTGTCTCTTATACACATCT\", enter ok")
+        adapter1 = self.popup_window.user_input
+        if adapter1 == "ok":
+            adapter1 = "CTGTCTCTTATACACATCT"
+        # 3' R2 adapter sequence
+        self.popup_window.popup_input("Adapter sequence R2","3\' adapter to be removed from R2\nIf you want to use \"CTGTCTCTTATACACATCT\", enter ok")
+        adapter2 = self.popup_window.user_input
+        if adapter2 == "ok":
+            adapter2 = "CTGTCTCTTATACACATCT"
+          
+        
+        
         #command processing
         command = (
-            "cutadapt " + "-a CTGTCTCTTATACACATCT" +  self.space +  "-A CTGTCTCTTATACACATCT" + self.space + 
+            "cutadapt " + "-a " + adapter1 +  self.space +  "-A " + adapter2 + self.space + 
             "-m 5" + self.space + "--nextseq-trim=20" + self.space + 
             "-o " + out_f1 + self.space + "-p " + out_f2 + self.space + 
             self.file_paths[0] + self.space + self.file_paths[1] + self.space +
@@ -286,11 +297,17 @@ class OperationMenu(tk.Menu):
         
         rcommand = self.run_command(command)
         if rcommand != None:
+            self.text_module.update_info_to_display("Error occured, please check the error message below")
+            self.text_module.update_info_to_display(rcommand)
+            stderrfile = open(outdir_adp+"Error_message.txt","w+")
+            stderrfile.write(rcommand)
+            stderrfile.close()
+            self.text_module.update_info_to_display("Error message are saved in "+outdir_adp+"Error_message.txt")
             self.init()
             return 1
         
         self.text_module.update_info_to_display(
-            "Adapter trimming is done\nOutputs and log are saved in " + self.file_name[1][0] + ".processed_files/adapter_trimming directory\n"
+            "Executed command are "+ command + "\nAdapter trimming is done\nOutputs and log are saved in " + self.file_name[1][0] + ".processed_files/adapter_trimming directory\n"
             "log file name is " + self.file_name[1][0] + ".trim.log"
         )
         
@@ -346,9 +363,9 @@ class OperationMenu(tk.Menu):
                     return 1
 
         #Reference genome setting
-        self.popup_window.popup_input("Reference genome","Input reference genome path as absolute path\nIf you want to use \"/seq/Ref/Homo_sapiens/UCSC/hg38/Sequence/Bowtie2Index/genome\", enter 1")
+        self.popup_window.popup_input("Reference genome","Input reference genome path as absolute path\nIf you want to use \"/seq/Ref/Homo_sapiens/UCSC/hg38/Sequence/Bowtie2Index/genome\", enter ok")
         refpath = self.popup_window.user_input
-        if refpath == 1:
+        if refpath == "ok":
             refpath = "/seq/Ref/Homo_sapiens/UCSC/hg38/Sequence/Bowtie2Index/genome"
           
         # Overwrite checking
@@ -391,14 +408,14 @@ class OperationMenu(tk.Menu):
             
         )
         
+        # samtools & bowtie2 return result as stderr
         rcommand = self.run_command(command)
-        if rcommand != None:
-            self.init()
-            return 1
-        
+        stderrfile = open(outdir_map+self.file_name[0][0]+".mapping.log","w+")
+        stderrfile.write(rcommand)
+        stderrfile.close()
         self.text_module.update_info_to_display(
-            "Mapping is done\nOutputs are saved in " + self.file_name[1][0] + ".processed_files/mapping directory\n"
-            "log file name is " + self.file_name[1][0] + ".mapping.log"
+            "Executed command are "+ command + "\nMapping is done\nOutputs are saved in " + self.file_name[1][0] + ".processed_files/mapping directory\n"
+            "log file name is " + self.file_name[0][0] + ".mapping.log"
         )
         
     def remove_unwanted_reads(self):
@@ -450,21 +467,21 @@ class OperationMenu(tk.Menu):
         command = (
             "awk " + "\'$3!=\"chrM\" && $3!=\"chrEBV\"\'" + self.space +
             out_map + self.space + "| samtools view -S -b -f 0x2 -q 10 -" + self.space +
-            "| samtools sort - -o" + self.space + outdir_map + self.file_name[0][0] + ".pe.q10.sort.bam" + self.space +
-            "> "+ outdir_map + self.file_name[0][0] + ".remove_unwanted_reads.log"    
+            "| samtools sort - -o" + self.space + outdir_map + self.file_name[0][0] + ".pe.q10.sort.bam"  
         )
         
+        # samtools & bowtie2 return result as stderr
         rcommand = self.run_command(command)
-        if rcommand != None:
-            self.init()
-            return 1
-        
+        stderrfile = open(outdir_map+self.file_name[0][0]+".remove_unwanted_reads.log","w+")
+        stderrfile.write(rcommand)
+        stderrfile.close()
+            
         self.text_module.update_info_to_display(
-            "Removing unwanted reads are done\nOutputs are saved in " + self.file_name[0][0] + ".processed_files/mapping directory\n"
+            "Executed command are "+ command + "\nRemoving unwanted reads are done\nOutputs are saved in " + self.file_name[0][0] + ".processed_files/mapping directory\n"
             "log file name is " + self.file_name[0][0] + ".remove_unwanted_reads.log"
         )
         
-    def conver_sam_to_bam(self):
+    def convert_sam_to_bam(self):
         
         self.text_module.clear_info_to_display()
         self.name_proccessing()
@@ -516,11 +533,15 @@ class OperationMenu(tk.Menu):
         
         rcommand = self.run_command(command)
         if rcommand != None:
+            stderrfile = open(outdir_map+"Error_message.txt","w+")
+            stderrfile.write(rcommand)
+            stderrfile.close()
+            self.text_module.update_info_to_display("Error message are saved in "+outdir_map+"Error_message.txt")
             self.init()
             return 1
         
         self.text_module.update_info_to_display(
-            "Removing unwanted reads are done\nOutputs are saved in " + self.file_name[0][0] + ".processed_files/mapping directory\n"
+            "Executed command are "+ command + "\nRemoving unwanted reads are done\nOutputs are saved in " + self.file_name[0][0] + ".processed_files/mapping directory\n"
         )
         
     def remove_pcr_duplicates(self):
@@ -763,10 +784,11 @@ class MainMenu:
         self.text_module.update_info_to_display(
             "This processer is based on tkinter, python\n"
             "Before using, please read \"README.md\"\n"
-            "This processer uses cutadapt, bowtie2, samtools, bedtools, and UCSC tools\n"
-            "Output files are saved in the same directory as the input file.\n"
-            "If you have any errors, inquiries, or improvements, please send an email to the address below.\n"
+            "This processer uses cutadapt, bowtie2, samtools\n"
+            "If you doesn't setting output_directory, output files are saved in the same directory as the input file.\n"
+            "If you have any errors, inquiries, or improvements, Please contact me at the following information.\n"
             "ansh1226@unist.ac.kr\n"
+            "https://github.com/Operon1226/GUI_sequencing_preprocessor"
         )
         
         parent.config(menu=self.menu_bar)
