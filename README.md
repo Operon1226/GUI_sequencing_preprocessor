@@ -100,11 +100,45 @@ This function uses the 'cutadapt' command for adapter trimming. The adapter sequ
 
 ### mapping
 
+This function uses the 'bowtie2' command for mapping. 
+mapping option is 'very sensitive'
+This program also implemented to take the current CPU usage and show the number of threads available so that more than one thread can be used when mapping.
+
+### remove unwanted reads
+
+This function uses awk command and samtools.
+Using awk, they filtered chrM and chrEBV.
+And also, using samtools view, selects only reads with a mapping quality score greater than or equal to 10. output files are "name.pe.q10.sort.bam"  
+
+### convert sam to bam 
+
+This function uses samtools. They will convert sam files to bam files. 
+
+### remove pcr duplicates
+
+This function uses picard-tools;MarkDuplicates.jar, and samtools
+
+### convert bam to bedGraph and bigwig
+
+This function uses genomeCoverageBed, bam2bed_shift.pl, norm_bedGraph.pl, bedGraphToBigWig
+
 ### overwrite_warning
+
 If a file already exists, there is a function to ask if you want to overwrite it.
 
-### directory_warning
+### directory
+
 If you already have a directory, this program has the ability to ask if you want to save outputs to that directory.
+It also checks that the directory entered is valid.
+And if the input files' directory is different, a warning popup will occur and they will request setting the output directory to users
+
+### log file
+
+When operations are executed, log files are created at same directory as output files. And if, error were occured during executing, error messages are also saved as "Error_message.txt". Since samtools and bowtie2 return values as stderr, It is not created when you run both tools.
+
+### wrong input format warning
+
+If input files are not proper to executing that operation, warning message will printed to GUI display.
 
 ## Classes
 
@@ -202,6 +236,3 @@ If you encounter any errors, have inquiries, or want to suggest improvements, pl
 - GitHub: [https://github.com/Operon1226/GUI_sequencing_preprocessor](https://github.com/Operon1226/GUI_sequencing_preprocessor)
 
 Your feedback is appreciated, and it will help me enhance the tool further. Thank you for using the Sequencing Preprocessor GUI!
-
-
-
