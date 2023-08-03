@@ -1,5 +1,7 @@
+#!/usr/bin/env python3 
+
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox, filedialog, font
 import subprocess as sp
 import math
 
@@ -8,6 +10,7 @@ class PopupWindow:
         self.mainframe = mainframe
         self.popup = None
         self.user_input = ""
+        self.selected_values = []
     
     def popup_input(self,title,detail):
         self.popup = tk.Toplevel(self.mainframe)
@@ -15,7 +18,7 @@ class PopupWindow:
         self.popup.title(title)
         self.popup.resizable(True,True)
         self.user_input = ""
-        label = tk.Label(self.popup,text=detail)
+        label = tk.Label(self.popup,text=detail,font=("Helvetica",15))
         label.pack()
         
         entry = tk.Entry(self.popup)
@@ -28,7 +31,54 @@ class PopupWindow:
         button = tk.Button(self.popup,text="OK",command=get_input)
         button.pack()
         self.mainframe.wait_window(self.popup)
+    
+    def popup_checkbox(self,title,detail,values):
+        self.values = values
+        self.popup = tk.Toplevel(self.mainframe)
+        height_popup = math.ceil(len(values)/2) * 45 + 130
+        enters = 0
+        width_popup = 0
+        for i in range(len(values)):
+            enters += values[i][1].count("\n")
+            if len(values[i][1]) > width_popup:
+                width_popup = len(values[i][1])
+        width_popup = width_popup * 6 + 100
+        if width_popup > 1300:
+            width_popup = 1300
+        if enters > 0:
+            height_popup += (enters -1) * 55
         
+        geometry_popup = str(width_popup) + "x" + str(height_popup)
+        self.popup.geometry(geometry_popup)
+        self.popup.title(title)
+        self.popup.resizable(True,True)
+        self.selected_values = []
+        label = tk.Label(self.popup,text=detail,font=("Helvetica",15))
+        label.pack()
+        
+        checkbox_vars = []
+        def update_selected():
+            self.selected_values.clear()
+        
+            for idx,value in enumerate(self.values):
+                if checkbox_vars[idx].get():
+                    self.selected_values.append([idx,value])
+                else:
+                    self.selected_values.append([idx,False])
+        
+        for value in self.values:
+            var = tk.BooleanVar()
+            checkbox_vars.append(var)
+            checkbox = tk.Checkbutton(self.popup, text=value[0], variable=var, command=update_selected,font=("Helvetica",14),pady=2)
+            checkbox.pack(anchor="w")
+            description_label = tk.Label(self.popup, text=value[1], font=("Helvetica", 12),justify="left",padx=20)
+            description_label.pack(anchor="w")
+            
+        button = tk.Button(self.popup,text="OK",command=self.popup_destroy,height=1,width=1)
+        button.pack()
+        self.mainframe.wait_window(self.popup)
+      
+      
     def popup_wait(self,name):
         self.popup = tk.Toplevel(self.mainframe)
         self.popup.geometry("800x100")
@@ -44,8 +94,12 @@ class PopupWindow:
 
 class TextModule:
     def __init__(self, mainframe):
-        self.text = tk.Text(mainframe)
+        self.text = tk.Text(mainframe,width=1000,height=600)
         self.text.pack()
+    
+    def set_font(self,font_name,font_size):
+        new_font = font.Font(family=font_name, size=font_size)
+        self.text.configure(font=new_font)
     
     # added file_paths to parameter
     def update_file_paths_display(self,file_paths):
@@ -80,6 +134,7 @@ class FileMenu(tk.Menu):
         self.text_module.clear_info_to_display()
         self.text_module.update_file_paths_display(self.file_paths)
         self.operation_menu.file_paths = self.file_paths
+        self.crispresso_menu.file_paths = self.file_paths
     
     def exit_program(self):
         if messagebox.askyesno("Exit", "Do you want to exit?"):
@@ -101,27 +156,30 @@ class FileMenu(tk.Menu):
             self.outdir()
         
         self.operation_menu.outdir_path = self.outdir_path
+        self.cripresso_menu.outdir_path = self.outdir_path
         
 class OperationMenu(tk.Menu):
     def __init__(self, parent,text_module,popup_window,file_paths,outdir_path):
-        super().__init__(parent,tearoff=False)
-        self.text_module = text_module
-        self.popup_window = popup_window
-        self.file_paths = file_paths
-        self.outdir_path = outdir_path
+        self.inherited(parent,text_module,popup_window,file_paths,outdir_path)
         self.add_command(label = "Adapter trimming", command = self.adapter_trimming)
         self.add_command(label = "Mapping", command = self.mapping)
         self.add_command(label = "Remove unwanted reads", command = self.remove_unwanted_reads)
         self.add_command(label = "Convert sam to bam", command = self.convert_sam_to_bam)
         self.add_command(label = "Remove PCR duplicates", command = self.remove_pcr_duplicates)
         self.add_command(label = "Convert to bedgraph and bigwig", command = self.convert_to_bedgraph_and_bigwig)
-        
-        self.processes = []
-        
-        self.space = " "
+
+    def inherited(self,parent,text_module,popup_window,file_paths,outdir_path):
+        super().__init__(parent,tearoff=False)
+        self.text_module = text_module
+        self.popup_window = popup_window
+        self.file_paths = file_paths
+        self.outdir_path = outdir_path
         self.file_name = []
         self.file_extension = []
         self.file_directory = []
+        self.processes = []
+        self.space = " "
+        self.file_full_name = []
 
     def directory_making(self,name):
         try:
@@ -159,9 +217,9 @@ class OperationMenu(tk.Menu):
         if result.returncode == 0:
             self.text_module.update_info_to_display(f"Warning: {files_paths} already exists.")
             self.popup_window.popup_input("Overwrite warning",f"{files_paths} already exists. If you want to overwrite, input ok")
-            self.text_module.update_info_to_display("command terminated")
             overwrite_check = self.popup_window.user_input
             if overwrite_check != "ok":
+                self.text_module.update_info_to_display("command terminated")
                 self.init()
                 return False
         else:
@@ -172,6 +230,7 @@ class OperationMenu(tk.Menu):
         for i in range(len(self.file_paths)):
             self.file_name.append(self.file_paths[i].split("/"))
             self.file_name[i] = self.file_name[i][len(self.file_name[i])-1]
+            self.file_full_name.append(self.file_name[i])
             self.file_name[i] = self.file_name[i].split(".")
             self.file_extension.append(self.file_name[i])
             self.file_name[i] = self.file_name[i][0]
@@ -212,6 +271,8 @@ class OperationMenu(tk.Menu):
         
             output = sp.Popen(command, shell=True, universal_newlines=True,stdout=sp.PIPE, stderr=sp.PIPE)    
             self.processes.append(output)
+            # HERE
+            self.file_menu.processes = self.processes
             (stdout,stderr) = output.communicate()
             
             output.wait()           
@@ -228,12 +289,31 @@ class OperationMenu(tk.Menu):
             self.text_module.update_info_to_display(f"Command execution failed with return code {e.returncode}")
             self.text_module.update_info_to_display(f"Error message: {e.output}")
 
+    def check_threads(self):
+        mthreads = sp.run("nproc",shell=True,capture_output=True,text=True)
+        rthreads = sp.run("top -bn1 | awk \'NR>7 { sum += $9 } END { print sum }\'",shell=True,capture_output=True,text=True)
+        mthreads = float(mthreads.stdout)
+        rthreads = float(rthreads.stdout)
+        rthreads = math.ceil(rthreads / 100)
+        athreads = mthreads - rthreads
+        comment = "Input threads for running this task\nAvailable threads are %f\nUsing a lot of threads doesn't always speed up." % athreads
+        # Threads
+        self.popup_window.popup_input("Threads for this task",comment)
+        threads = self.popup_window.user_input
+        a = int(threads)
+        if a <= athreads:
+            return threads
+        else:
+            self.text_module.update_info_to_display("The input value is more than the available number. Please enter it again")
+            self.check_threads()
+
     def adapter_trimming(self): 
         
         self.text_module.clear_info_to_display()
         self.name_proccessing()
+        
         self.file_directory = self.directory_processing(self.file_directory)
-        print(self.file_directory)
+        
         #Error processing
         if (len(self.file_name) > 2):
             self.init()
@@ -283,13 +363,13 @@ class OperationMenu(tk.Menu):
         adapter2 = self.popup_window.user_input
         if adapter2 == "ok":
             adapter2 = "CTGTCTCTTATACACATCT"
-          
         
+        threads = self.check_threads()
         
         #command processing
         command = (
             "cutadapt " + "-a " + adapter1 +  self.space +  "-A " + adapter2 + self.space + 
-            "-m 5" + self.space + "--nextseq-trim=20" + self.space + 
+            "-m 5" + self.space + "--nextseq-trim=20" + self.space + "-j " + threads + self.space +
             "-o " + out_f1 + self.space + "-p " + out_f2 + self.space + 
             self.file_paths[0] + self.space + self.file_paths[1] + self.space +
             "> "+ outdir_adp + self.file_name[1][0] + ".trim.log"
@@ -376,27 +456,8 @@ class OperationMenu(tk.Menu):
             self.init()
             return 1
         
-        mthreads = sp.run("nproc",shell=True,capture_output=True,text=True)
-        rthreads = sp.run("top -bn1 | awk \'NR>7 { sum += $9 } END { print sum }\'",shell=True,capture_output=True,text=True)
-        mthreads = float(mthreads.stdout)
-        rthreads = float(rthreads.stdout)
-        rthreads = math.ceil(rthreads / 100)
-        athreads = mthreads - rthreads
+        threads = self.check_threads()
         
-        comment = "Input threads for running this task\nAvailable threads are %f\nUsing a lot of threads doesn't always speed up." % athreads
-        
-        # Threads
-        while True:
-            self.popup_window.popup_input("Threads for this task",comment)
-            threads = self.popup_window.user_input
-            a = int(threads)
-            
-            if a <= athreads:
-                break
-            
-            else:
-                self.text_module.update_info_to_display("The input value is more than the available number. Please enter it again")
-
         # Command processing
         command = (
             "bowtie2 " + "--very-sensitive" +self.space + "-p " + threads + self.space +
@@ -780,24 +841,181 @@ class OperationMenu(tk.Menu):
                 treadbQC = path_bQC
             rtreadbQC = sp.run(treadbQC,shell=True,capture_output=True,text=True)
             self.text_module.update_info_to_display("count of total reads before QC filter: " + rtreadbQC.stdout + "\n")
+
+class CRISPResso(OperationMenu):
+    def __init__(self, parent,text_module, popup_window, file_paths, outdir_path):
+        super().inherited(parent, text_module, popup_window, file_paths, outdir_path)
+        self.add_command(label="CRISPResso", command=self.crispresso)
+        self.add_command(label="CRISPRessoBatch", command=self.crispresso_batch)
+        self.add_command(label="CRISPRessoPooled", command=self.crispresso_pooled)
+        self.add_separator()
+        self.add_command(label="CRISPRessoHELP", command=self.crispresso_help)
+        self.docker1 = 'docker run -v '
+        self.docker2 = ':/DATA -w /DATA -i pinellolab/crispresso2 '
+
+    def command_processor(self,command):
+        modified_command = command.replace(' ', '_')
+        modified_command = "--" + modified_command
+        return modified_command
+
+    def option_processor(self,title,detail,option_list):
+        self.popup_window.popup_checkbox(title,detail,option_list)
+        selected_option = []
+        selected_option = self.popup_window.selected_values
+        
+        if selected_option == []:
+            self.text_module.update_info_to_display("No option is selected\n")
+            self.option_processor(title,detail,option_list)
+        
+        selected_index = []
+        for i in range(len(selected_option)):
+            if selected_option[i][1] != False:
+                selected_index.append(i)
+                
+        return (selected_option, selected_index)
+
+    def crispresso(self):
+        self.text_module.clear_info_to_display()
+        
+        # self.name_proccessing()
+        # self.file_directory = self.directory_processing(self.file_directory)
+        
+        # print("file name is :",self.file_name)
+        # print("file directory is :",self.file_directory)
+        # print("file extension is :",self.file_extension)
+        # print("file path is :",self.file_paths)
+        # print("file directory is :",self.file_directory)
+        # print("file full name is :",self.file_full_name)
+        
+        basic_options = [["amplicon name","A name for the reference amplicon can be given. If multiple amplicons are given, multiple names can be specified here.\namplicon names are truncated to 21bp unless the parameter --suppress_amplicon_name_truncation is set.\nDefault : Reference"],
+                    ["sgRNA parameters","parameters for sgRNA"],
+                   ["expected hdr amplicon seq","Amplicon sequence expected after HDR.\nNote that the entire amplicon sequence must be provided, not just the donor template."],
+                   ["coding seq","Subsequence/s of the amplicon sequence covering one or more coding sequences for frameshift analysis.\nIf more than one (for example, split by intron/s), please separate by commas.\nUsers should provide the subsequences of the reference amplicon sequence that correspond to coding sequences (not the whole exon sequence(s)!)."],
+                   ["minimum average read quality","Minimum average quality score (phred33) to keep a read\ndefault: 0"],
+                   ["minimum single bp quality","Minimum single bp score (phred33) to keep a read\ndefault: 0"],
+                   ["plot histogram outliers","If set, all values will be shown on histograms. By default (if unset), histogram ranges are limited to plotting data within the 99 percentile.\ndefault: False"],
+                   ["Quantification parameters","Parameters for quantification window\nIf you are using Cpf1, you have to set this parameters"],
+                   ["output parameters","Parameters for output"],
+                   ["ETC","Use if you want to set options that is not listed\nIf you select this option, you will enter the option yourself. There is no additional validation in the program for the option entered.\n"]]
+        basic_options_index = []
+        (basic_options, basic_options_index) = self.option_processor("CRISPResso options","Which of the optional options would you like to use",basic_options)
+         
+        sgRNA_parameter_options = [["guide seq","sgRNA sequence, if more than one, please separate by commas.\nsgRNA needs to be input as the guide RNA sequence immediately adjacent to but not including the PAM sequence (5' of NGG for SpCas9)."],
+                                   ["guide name","sgRNA names, if more than one, please separate by commas\ndefalut: sgRNA"],
+                                   ["discard guide positions overhanging amplicon edge","If set, for guides that align to multiple positions, guide positions will be discarded if plotting around those regions would included bp that extend beyond the end of the amplicon.\ndefault: False"],
+                                   ["ETC","Use if you want to set options that is not listed\nIf you select this option, you will enter the option yourself. There is no additional validation in the program for the option entered.\n"]]
+        sgRNA_options_index = []
+        (sgRNA_parameter_options, sgRNA_options_index) = self.option_processor("sgRNA parameters","Which of the optional options would you like to use",sgRNA_parameter_options)
+        
+        quantification_options = [["quantification window size","This option also called \'window_around_sgRNA\'\nDefines the size (in bp) of the quantification window extending from the position \nspecified by the \"--quantification_window_center\" parameter in relation to the provided guide RNA sequence(s)\ndefault: 1"],
+                                  ["quantification window center","This option also called \'cleavage_offset\'\nCenter of quantification window to use within respect to the 3' end of the provided sgRNA sequence.\nRemember that the sgRNA sequence must be entered without the PAM.If using the Cpf1 system, enter the sequence immediately 3' of the PAM sequence and explicitly set the '--cleavage_offset' parameter to 1\ndefault: -3"],
+                                  ["ETC","Use if you want to set options that is not listed\nIf you select this option, you will enter the option yourself. There is no additional validation in the program for the option entered.\n"]]
+        quantificatoin_options_index = []
+        (quantification_options, quantificatoin_options_index) = self.option_processor("Quantification parameters","Which of the optional options would you like to use",quantification_options)
+        
+        output_options = [["file prefix","File prefix for output plots and tables"],
+                          ["fastq output","If set, a fastq file with annotations for each read will be produced\ndefault: False"],
+                          ["keep intermediate","Keep all the intermediate files\ndefault: False"],
+                          ["zip output","If true, the output folder will be zipped upon completion.\ndefault: False"],
+                          ["suppress amplicon name truncation","If set, amplicon names will not be truncated when creating output filename prefixes. If not set, amplicon names longer than 21 characters will be truncated when creating filename prefixes.\ndefault: False"],
+                          ["ETC","Use if you want to set options that is not listed\nIf you select this option, you will enter the option yourself. There is no additional validation in the program for the option entered.\n"]]
+        output_options_index = []
+        (output_options, output_options_index) = self.option_processor("Output parameters","Which of the optional options would you like to use",output_options)
     
+    
+    
+        # #Error processing
+        # if (len(self.file_name) > 2):
+        #     self.init()
+        #     self.text_module.clear_info_to_display()
+        #     self.text_module.update_info_to_display("Too many files selected")
+        #     return 1
+        # if (self.file_name[0][0] != self.file_name[0][0]):
+        #     self.init()
+        #     self.text_module.clear_info_to_display()
+        #     self.text_module.update_info_to_display("Files are not paired")
+        #     return 1
+        # if not(((self.file_extension[0] and self.file_extension[1]) == "fastq") or ((self.file_extension[0] and self.file_extension[1]) == "fastq.gz")):
+        #     self.init()
+        #     self.text_module.clear_info_to_display()
+        #     self.text_module.update_info_to_display("Selected files are wrong format")
+        #     return 1
+        
+        # command_F = self.docker1 + self.file_directory + self.docker2 + "CRISPResso "
+        
+        # #directory processing    
+        # outdir = self.file_directory + "/" + self.file_name[0][0] + ".processed_files/"
+        # (dcommand_a,dircheck_a) = self.directory_making(outdir)
+        # if dcommand_a != None:
+        #     if dircheck_a != "ok":
+        #         return 1
+            
+        # output_dir = "--output_folder " + outdir
+        
+        # command_F += "--fastq_r1 " + self.file_full_name[0]
+        # if len(self.file_full_name) == 2:
+        #     command_F += " --fastq_r2 " + self.file_full_name[1]
+        
+        # self.popup_window.popup_input("Enter amplicon sequence","Enter amplicon sequence")
+        # ampliseq = self.popup_window.user_input
+        # command_F += "--amplicon_seq " + ampliseq
+        
+        # self.popup_window.popup_input("Enter sgRNA sequence","Enter sgRNA sequence\nif more than one, please separate by commas\nIf you don't want to use this options,")
+
+        # # name
+        # self.popup_window.popup_input("Enter name","Enter output name of the report")
+        # input_name = self.popup_window.user_input
+        # output_name = '--name ' + input_name
+        
+        
+        
+        
+        # ov_out_f1 = self.overwrite_warn(out_f1)
+        # ov_out_f2 = self.overwrite_warn(out_f2)
+        
+        # if ov_out_f1 == False or ov_out_f2 == False:
+        #     self.init()
+        #     return 1
+        
+        
+    def crispresso_batch(self):
+        print("CRISPRessoBatch")
+    
+    def crispresso_pooled(self):
+        print("CRISPRessoPooled")
+    
+    def crispresso_help(self):
+        self.text_module.clear_info_to_display()
+        self.text_module.update_info_to_display("CRISPRessoHELP")
+        self.text_module.update_info_to_display("CRISPResso is a software pipeline for the analysis of CRISPR-Cas9 genome editing outcomes from deep sequencing data.\n"
+                                                "It is designed to enable rapid and intuitive interpretation of results produced by amplicon sequencing.\n"
+                                                "They will do the following\n"
+                                                "aligns sequencing reads to a reference sequence\n"
+                                                "quantifies insertions, mutations and deletions to determine whether a read is modified or unmodified by genome editing\n"
+                                                "summarizes editing results in intuitive plots and datasets\n"
+                                                "If you want to trim adapter, you have to use \'trimming\' function in \'Operation\' menu.\n"
+)
+   
 class MainMenu:
     def __init__(self, parent):
         
         parent.title("Sequencing preprocesser")
-        parent.geometry("700x400")
+        parent.geometry("1200x700")
         parent.resizable(True, True)
         
         self.text_module = TextModule(parent)
+        self.text_module.set_font("Helvetica",12)
         self.popup_window = PopupWindow(parent)
         
         
         self.menu_bar = tk.Menu(parent)
         self.file_menu = FileMenu(self.menu_bar, self.text_module,self.popup_window)
         self.operation_menu = OperationMenu(self.menu_bar,self.text_module,self.popup_window,[],"")
+        self.crispresso_menu = CRISPResso(self.menu_bar,self.text_module,self.popup_window,[],"")
 
         self.menu_bar.add_cascade(label="File", menu=self.file_menu)
         self.menu_bar.add_cascade(label="Operation", menu=self.operation_menu)
+        self.menu_bar.add_cascade(label="CRISPResso", menu=self.crispresso_menu)
         
         # Comments for users
         self.text_module.update_info_to_display(
@@ -816,6 +1034,8 @@ def main():
     mainframe = tk.Tk()
     main_menu = MainMenu(mainframe)
     main_menu.file_menu.operation_menu = main_menu.operation_menu
+    main_menu.file_menu.crispresso_menu = main_menu.crispresso_menu
+    main_menu.operation_menu.file_menu = main_menu.file_menu
     mainframe.mainloop()
 
 if __name__ == '__main__':
