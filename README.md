@@ -26,6 +26,7 @@ Make sure you have the following software installed on your system:
 - norm_bedGraph.pl (optional)
 - genomeCoverageBed (optional)
 - GenomeCoverageBed (optional)
+- CRISPResso2 (optional, for CRISPResso)
 
 ### Installation
 
@@ -36,7 +37,17 @@ Make sure you have the following software installed on your system:
 3. Run the GUI:
 `python3 gui.py`
 
+### Setting shebang
+
+Please set the location of Python to use when you run this program in shebang.
+Default is '#!/usr/bin/env python3'
+
 ## Troubleshooting & Errors
+
+### The letters look broken or too small.
+
+In Python, installed as Anaconda, we found that changing the font or size of the letters did not apply well.
+Please set original interpreters; ex) #!/usr/bin/env python3 or #!/usr/bin/python3
 
 ### Error: "no display name and no $DISPLAY environment variable"
 
