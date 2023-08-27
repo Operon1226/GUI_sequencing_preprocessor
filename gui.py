@@ -1,4 +1,4 @@
-#!/usr/bin/env python3 
+#!/usr/bin/python3 
 
 import tkinter as tk
 from tkinter import messagebox, filedialog, font
@@ -978,7 +978,6 @@ class CRISPResso(OperationMenu):
         self.docker2 = ':/DATA -w /DATA -i pinellolab/crispresso2 '
 
     def command_processor(self,command):
-        print(command)
         modified_command = command.replace(' ', '_')
         modified_command = "--" + modified_command
         return modified_command
@@ -990,7 +989,7 @@ class CRISPResso(OperationMenu):
         selected_option = self.popup_window.selected_values
         
         if selected_option == []:
-            self.popup_window.popup_input("No option is selected","No option is selected\nIf you want to operate without additional options, enter 1\nIf not, enter 1")
+            self.popup_window.popup_input("No option is selected","No option is selected\nIf you want to operate without additional options, enter 1\nIf not, enter")
             selected_option = self.popup_window.user_input
             if selected_option == "1":
                 selected_option = []
@@ -1064,7 +1063,7 @@ class CRISPResso(OperationMenu):
         command_F += '--name ' + input_name + self.space
         
         command_F += "--output_folder /DATA" + self.space
-        
+    
     
         basic_options = [["amplicon name","A name for the reference amplicon can be given. If multiple amplicons are given, multiple names can be specified here.\namplicon names are truncated to 21bp unless the parameter --suppress_amplicon_name_truncation is set.\nDefault : Reference"],
                     #sgRNA options
@@ -1086,6 +1085,7 @@ class CRISPResso(OperationMenu):
                     ["zip output","If true, the output folder will be zipped upon completion.\ndefault: False"],
                     ["suppress amplicon name truncation","If set, amplicon names will not be truncated when creating output filename prefixes. If not set, amplicon names longer than 21 characters will be truncated when creating filename prefixes.\ndefault: False"],
                     ["ETC","Use if you want to set options that is not listed\nIf you select this option, you will enter the option yourself. There is no additional validation in the program for the option entered."]]
+        
         basic_options = self.option_processor("CRISPResso options","Which of the optional options would you like to use",basic_options)
         
         if basic_options != []:
@@ -1093,8 +1093,14 @@ class CRISPResso(OperationMenu):
                 command_F += basic_options[i][0] + self.space + basic_options[i][1] + self.space
 
         rcommand = self.run_command(command_F)
-        print(command_F)
+        # print(command_F)
         print(rcommand)
+
+
+        for i in range(len(self.file_name)):
+            sp.run("mv " + outdir + self.file_full_name[i] + self.space + self.file_paths[i], shell = True)
+        
+        
         
     def crispresso_batch(self):
         print("CRISPRessoBatch")
